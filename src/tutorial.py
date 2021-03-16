@@ -1,34 +1,42 @@
-import tensorflow as tf
+import csv
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import tensorflow as tf
 
-mnist = tf.keras.datasets.mnist
+from PIL import Image
 
-(x_train, y_train), (x_test, y_test) = mnist.load_data()
-x_train, x_test = x_train / 255.0, x_test / 255.0
+with open("/mnt/c/Users/Antti/Documents/Aalto/machine_learning/ocr_project/src/letter_data.csv",'r') as csv_file:
+    csv_reader = csv.reader(csv_file, delimiter = ',')
+    arrays = []
+    letters = []
+    for line in csv_reader:
+        if line[0].isnumeric():
+            letters.append(line[1])
+            letter_data = []
+            first = 6
+            last = 14
+            for i in range(16):
+                row = []
+                help_list = line[first:last]
+                
+                for number in help_list:
+                    if number == '1':
+                        row.append(0)
+                    elif number == '0':
+                        row.append(255)
+                
+                letter_data.append(row)
+                first += 8; last += 8
+            letter_array = np.array(letter_data)
+            arrays.append(letter_array.astype(np.float32))
+        else:
+            continue
 
-plt.figure()
-plt.imshow(x_train[0])
-plt.colorbar()
-plt.grid(False)
-plt.show()
-'''
-model = tf.keras.models.Sequential([
-  tf.keras.layers.Flatten(input_shape=(28, 28)),
-  tf.keras.layers.Dense(128, activation='relu'),
-  tf.keras.layers.Dropout(0.2),
-  tf.keras.layers.Dense(10)
-])
+data ={'letter' : letters, 'array': arrays}
+df = pd.DataFrame(data)
 
-predictions = model(x_train[:1]).numpy()
-predictions
-
-print("probabilities: ", tf.nn.softmax(predictions).numpy())
-loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-print("Loss_function: ", loss_fn(y_train[:1], predictions).numpy())
-
-model.compile(optimizer='adam',
-              loss=loss_fn,
-              metrics=['accuracy'])
-
-model.fit(x_train, y_train, epochs=5)
-'''
+letter = df.pop('letter')
+dataset = tf.data.Dataset.from_tensor_slices((df.values, letter.values))
+for feat, targ in dataset.take(5):
+  print ('Features: {}, Target: {}'.format(feat, targ))
